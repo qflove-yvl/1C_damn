@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+sqlalchemy
+python-telegram-bot==20.6
+requests
+pandas
+openpyxl
+psycopg2-binary
