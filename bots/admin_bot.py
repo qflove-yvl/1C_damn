@@ -1,81 +1,198 @@
+import aiohttp
+import io
 import requests
-import pandas as pd
-from telegram import ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackQueryHandler
 
+from telegram import (
+    Update,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    ReplyKeyboardMarkup,
+    InputFile,
+)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
+
+# ================= НАСТРОЙКИ =================
 
 TOKEN = "8509144850:AAGzSWbu5d2w7Vr3hWUMrEZ9ZCie8SIr1qA"
 API = "http://127.0.0.1:8000"
 
-keyboard = ReplyKeyboardMarkup(
-    [["📋 Заявки", "📄 Excel"]],
-    resize_keyboard=True
-)
+ADMIN_IDS = [1123838913]  # ← ТВОЙ TG ID
+
+# ============================================
 
 
-async def start(update, context):
-    await update.message.reply_text(
-        "👨‍💼 CRM админ-панель",
-        reply_markup=keyboard
+def admin_only(update: Update) -> bool:
+    return update.effective_user.id in ADMIN_IDS
+
+
+def main_keyboard():
+    return ReplyKeyboardMarkup(
+        [
+            ["📋 Заявки", "📊 Excel"],
+            ["🆕 Новый", "⚙ В работе", "✅ Готово", "❌ Отказ"],
+        ],
+        resize_keyboard=True,
     )
 
 
-async def show_orders(update, context):
-    data = requests.get(f"{API}/orders").json()
+def order_keyboard(index: int, total: int, order_id: int):
+    buttons = []
 
-    for o in data:
-        text = (
-            f"🆔 {o['id']}\n"
-            f"👤 {o['client_name']} (@{o['client_username']})\n"
-            f"💬 {o['text']}\n"
-            f"📌 {o['status']}"
+    nav = []
+    if index > 0:
+        nav.append(
+            InlineKeyboardButton("⬅️", callback_data=f"nav:{index-1}")
+        )
+    if index < total - 1:
+        nav.append(
+            InlineKeyboardButton("➡️", callback_data=f"nav:{index+1}")
         )
 
-        kb = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🛠 В работу", callback_data=f"work_{o['id']}"),
-                InlineKeyboardButton("✅ Готово", callback_data=f"done_{o['id']}")
-            ]
-        ])
+    if nav:
+        buttons.append(nav)
 
-        await update.message.reply_text(text, reply_markup=kb)
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "🟡 В работе", callback_data=f"status:{order_id}:in_progress"
+            ),
+            InlineKeyboardButton(
+                "✅ Готово", callback_data=f"status:{order_id}:done"
+            ),
+        ]
+    )
 
-async def export_excel(update, context):
-    data = requests.get(f"{API}/orders").json()
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "❌ Отказ", callback_data=f"status:{order_id}:rejected"
+            )
+        ]
+    )
 
-    if not data:
-        await update.message.reply_text("Нет данных")
+    return InlineKeyboardMarkup(buttons)
+
+
+async def fetch_orders(status=None):
+    url = f"{API}/orders"
+    if status:
+        url += f"?status={status}"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as r:
+            return await r.json()
+
+
+async def render(message, index: int, status=None):
+    orders = await fetch_orders(status)
+
+    if not orders:
+        await message.edit_text("❌ Заявок нет")
         return
 
-    df = pd.DataFrame(data)
-    df.to_excel("orders.xlsx", index=False)
+    index = max(0, min(index, len(orders) - 1))
+    o = orders[index]
 
-    await update.message.reply_document(open("orders.xlsx", "rb"))
+    text = (
+        f"📦 Заявка {index+1}/{len(orders)}\n\n"
+        f"🆔 {o['id']}\n"
+        f"👤 {o['client_name']} (@{o['client_username']})\n\n"
+        f"📝 {o['text']}\n\n"
+        f"📌 Статус: {o['status']}"
+    )
+
+    await message.edit_text(
+        text,
+        reply_markup=order_keyboard(index, len(orders), o["id"]),
+    )
 
 
-async def handle_buttons(update, context):
+# ================== HANDLERS ==================
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not admin_only(update):
+        return
+    await update.message.reply_text(
+        "🛠 Админ-панель",
+        reply_markup=main_keyboard(),
+    )
+
+
+async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not admin_only(update):
+        return
+
+    text = update.message.text
+    context.user_data["status"] = None
+
+    if text == "📋 Заявки":
+        msg = await update.message.reply_text("⏳")
+        await render(msg, 0)
+
+    elif text in ["🆕 Новый", "⚙ В работе", "✅ Готово", "❌ Отказ"]:
+        status = text.split()[-1]
+        context.user_data["status"] = status
+        msg = await update.message.reply_text("⏳")
+        await render(msg, 0, status)
+
+    elif text == "📊 Excel":
+        async with aiohttp.ClientSession() as s:
+            async with s.get(f"{API}/excel") as r:
+                data = await r.read()
+
+        file = io.BytesIO(data)
+        file.name = "orders.xlsx"
+        await update.message.reply_document(InputFile(file))
+
+
+async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not admin_only(update):
+        return
+
     query = update.callback_query
     await query.answer()
 
-    action, order_id = query.data.split("_")
+    data = query.data.split(":")
+    status_filter = context.user_data.get("status")
 
-    status = "В работе" if action == "work" else "Готов"
+    if data[0] == "nav":
+        await render(query.message, int(data[1]), status_filter)
 
-    requests.post(f"{API}/status", json={
-        "id": int(order_id),
-        "status": status
-    })
+    elif data[0] == "status":
+        _, order_id, status = data
 
-    await query.edit_message_text(f"Статус заказа {order_id}: {status}")
+        r = requests.post(
+            f"{API}/orders/{order_id}/status",
+            json={"status": status},
+        )
+
+        if r.status_code != 200:
+            await query.answer("Ошибка")
+            return
+
+        await query.answer("Статус обновлён")
+        await render(query.message, 0, status_filter)
 
 
-app = Application.builder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.Regex("📋"), show_orders))
-app.add_handler(MessageHandler(filters.Regex("📄"), export_excel))
+# ================== MAIN ==================
 
-print("Admin bot started")
-app.run_polling()
-app.add_handler(CallbackQueryHandler(handle_buttons))
+def main():
+    app = Application.builder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
+    app.add_handler(CallbackQueryHandler(callback_handler))
+
+    print("✅ Admin bot started")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
