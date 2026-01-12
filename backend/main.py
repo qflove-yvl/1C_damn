@@ -161,7 +161,7 @@ def update_status(data: StatusUpdate):
                 f"📝 <b>Текст заявки:</b>\n"
                 f"{order.text}\n\n"
                 f"📌 <b>Новый статус:</b> <u>{order.status}</u>\n\n"
-                f"👨‍💼 Менеджер: @manager_username"
+                f"👨‍💼 Менеджер: @cestlavieq"
             )
         }
     )
