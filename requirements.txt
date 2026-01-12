@@ -3,5 +3,6 @@ uvicorn
 sqlalchemy
 jinja2
 python-multipart
-openpyxl
 requests
+openpyxl
+itsdangerous
