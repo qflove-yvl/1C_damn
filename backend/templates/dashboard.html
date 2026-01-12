@@ -1,15 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>CRM</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <h1>Админ-панель</h1>
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
 
-    <div class="menu">
-        <a href="/panel/orders">📋 Заявки</a>
-        <a href="/excel">📊 Excel</a>
+{% block content %}
+<div class="center-wrap">
+    <h1 class="center-title">Панель управления</h1>
+    <p class="center-subtitle">
+        Управляйте заявками, статусами и выгрузками в одном месте
+    </p>
+
+    <div class="cards center-cards">
+        <div class="card big-card">
+            <h3>📦 Заявки</h3>
+            <p>Просмотр, фильтрация и смена статусов</p>
+            <a href="/panel/orders" class="btn big-btn">Перейти</a>
+        </div>
+
+        <div class="card big-card">
+            <h3>📊 Excel отчёт</h3>
+            <p>Скачать все заявки одним файлом</p>
+            <a href="/excel" class="btn big-btn">Скачать</a>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

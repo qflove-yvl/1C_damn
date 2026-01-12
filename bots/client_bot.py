@@ -12,7 +12,7 @@ KEYBOARD = ReplyKeyboardMarkup(
 
 SERVICE_TEXT = (
     "🛠 Сервис заявок\n\n"
-    "👨‍💼 Менеджер: @manager_username\n"
+    "👨‍💼 Менеджер: @cestlavieq\n"
     "⏰ 24/7"
 )
 
@@ -64,12 +64,7 @@ async def handle(update, context):
             data = await r.json()
 
     await update.message.reply_text(f"✅ Заявка №{data['id']} создана")
-    await update.message.reply_text(
-        "✅ Заявка принята!\n\n"
-        "📌 Менеджер скоро с вами свяжется\n"
-        "⏳ Среднее время ответа — до 15 минут\n\n"
-        "Вы можете проверить статус в кнопке 📋 Мои заявки"
-    )
+
 
 
 app = Application.builder().token(TOKEN).build()

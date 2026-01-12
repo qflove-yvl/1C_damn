@@ -1,51 +1,59 @@
-from fastapi import FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
+from pydantic import BaseModel
+from openpyxl import Workbook
+from datetime import datetime
+import requests
 
 from backend.database import SessionLocal, engine
 from backend.models import Base, Order
 
-from openpyxl import Workbook
-import requests
+# ================== НАСТРОЙКИ ==================
 
-# ================== APP ==================
+ADMIN_LOGIN = "ilaz17"
+ADMIN_PASSWORD = "Ilaz_2008"
+CLIENT_BOT_TOKEN = "8279684714:AAFW2cIyug91fE6kArn9GsC55M0tASyu6Mg"
+
+# ==============================================
 
 app = FastAPI()
 
+# 🔐 Сессии (НЕ ТРОГАТЬ)
 app.add_middleware(
     SessionMiddleware,
-    secret_key="SUPER_SECRET_KEY_123"
+    secret_key="ULTRA_SUPER_SECRET_KEY_123",
+    max_age=60 * 60 * 24
 )
 
+# 📁 Статика и шаблоны
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
 
-CLIENT_BOT_TOKEN = "8279684714:AAFW2cIyug91fE6kArn9GsC55M0tASyu6Mg"
-
+# 🗄️ База
 Base.metadata.create_all(bind=engine)
 
-# ================== HELPERS ==================
+# ================== УТИЛИТЫ ==================
 
 def admin_required(request: Request):
     if not request.session.get("admin"):
-        raise HTTPException(status_code=401)
+        return RedirectResponse("/login", status_code=302)
 
-# ================== AUTH ==================
+
+# ================== АВТОРИЗАЦИЯ ==================
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+
 @app.post("/login")
-def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...)
-):
-    if username == "ilaz17" and password == "Ilaz_2008":
+def login(request: Request,
+          username: str = Form(...),
+          password: str = Form(...)):
+    if username == ADMIN_LOGIN and password == ADMIN_PASSWORD:
         request.session["admin"] = True
         return RedirectResponse("/dashboard", status_code=302)
 
@@ -54,33 +62,35 @@ def login(
         {"request": request, "error": "Неверный логин или пароль"}
     )
 
+
 @app.get("/logout")
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/login", status_code=302)
 
-# ================== WEB PANEL ==================
+# ================== ВЕБ-ПАНЕЛЬ ==================
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
-    admin_required(request)
+    if not request.session.get("admin"):
+        return RedirectResponse("/login", status_code=302)
+
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
 
 @app.get("/panel/orders", response_class=HTMLResponse)
 def panel_orders(request: Request):
     admin_required(request)
-
     db = SessionLocal()
     orders = db.query(Order).order_by(Order.id.desc()).all()
     db.close()
-
     return templates.TemplateResponse(
         "orders.html",
         {"request": request, "orders": orders}
     )
 
-
-# ================== API ==================
+# ================== API ЗАЯВОК ==================
 
 class OrderCreate(BaseModel):
     client_name: str
@@ -88,36 +98,33 @@ class OrderCreate(BaseModel):
     client_chat_id: str
     text: str
 
+
 class StatusUpdate(BaseModel):
     id: int
     status: str
 
+
 @app.post("/orders")
 def create_order(data: OrderCreate):
     db = SessionLocal()
-    order = Order(**data.dict(), status="Новый")
+    order = Order(
+        client_name=data.client_name,
+        client_username=data.client_username,
+        client_chat_id=data.client_chat_id,
+        text=data.text,
+        status="Новый",
+        created_at=datetime.utcnow()
+    )
     db.add(order)
     db.commit()
     db.refresh(order)
     db.close()
-
-    # автоответ клиенту
-    requests.post(
-        f"https://api.telegram.org/bot{CLIENT_BOT_TOKEN}/sendMessage",
-        json={
-            "chat_id": data.client_chat_id,
-            "text": (
-                f"✅ Заявка №{order.id} принята!\n\n"
-                "📌 Статус: Новый\n"
-                "⏳ Менеджер скоро ответит"
-            )
-        }
-    )
-
     return {"id": order.id}
 
+
 @app.get("/orders")
-def get_orders(status: str | None = None, chat_id: str | None = None):
+def get_orders(status: str | None = None,
+               chat_id: str | None = None):
     db = SessionLocal()
     q = db.query(Order)
 
@@ -130,26 +137,36 @@ def get_orders(status: str | None = None, chat_id: str | None = None):
     db.close()
     return orders
 
+
 @app.post("/status")
 def update_status(data: StatusUpdate):
     db = SessionLocal()
     order = db.get(Order, data.id)
     if not order:
+        db.close()
         raise HTTPException(404)
 
     order.status = data.status
     db.commit()
 
-    # уведомление клиенту
+    # 📬 Уведомление клиенту
     requests.post(
         f"https://api.telegram.org/bot{CLIENT_BOT_TOKEN}/sendMessage",
         json={
             "chat_id": order.client_chat_id,
-            "text": f"📦 Заявка №{order.id}\nСтатус: {order.status}"
+            "parse_mode": "HTML",
+            "text": (
+                f"📦 <b>Заявка №{order.id}</b>\n"
+                f"🕒 <i>{order.created_at.strftime('%d.%m.%Y %H:%M')}</i>\n\n"
+                f"📝 <b>Текст заявки:</b>\n"
+                f"{order.text}\n\n"
+                f"📌 <b>Новый статус:</b> <u>{order.status}</u>\n\n"
+                f"👨‍💼 Менеджер: @manager_username"
+            )
         }
     )
 
-    # ❗ УДАЛЯЕМ ИЗ БАЗЫ
+    # ❌ Удаляем из БД если финальный статус
     if data.status in ["Готово", "Отказ"]:
         db.delete(order)
         db.commit()
@@ -160,7 +177,7 @@ def update_status(data: StatusUpdate):
 # ================== EXCEL ==================
 
 @app.get("/excel")
-def excel():
+def export_excel():
     db = SessionLocal()
     orders = db.query(Order).all()
     db.close()
@@ -176,7 +193,7 @@ def excel():
             o.client_username,
             o.text,
             o.status,
-            getattr(o, "created_at", "")
+            o.created_at.strftime("%d.%m.%Y %H:%M")
         ])
 
     path = "orders.xlsx"

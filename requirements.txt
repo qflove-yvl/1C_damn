@@ -1,8 +1,7 @@
 fastapi
 uvicorn
 sqlalchemy
-python-telegram-bot==20.6
-requests
-pandas
+jinja2
+python-multipart
 openpyxl
-psycopg2-binary
+requests

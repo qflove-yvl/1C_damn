@@ -3,23 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin Login</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="login-body">
 
-<div class="login-card">
-    <h1>🔐 Админ-панель</h1>
+<body class="bg-gradient-to-br from-slate-900 to-black min-h-screen flex items-center justify-center">
+
+<form method="post"
+      class="bg-slate-900 p-10 rounded-3xl shadow-2xl w-[380px] animate-fade-in">
+
+    <h1 class="text-3xl font-semibold text-center mb-8">
+        Админ панель
+    </h1>
 
     {% if error %}
-        <div class="error">{{ error }}</div>
+        <div class="bg-red-500/20 text-red-400 px-4 py-2 rounded-xl mb-6 text-center">
+            {{ error }}
+        </div>
     {% endif %}
 
-    <form method="post" action="/login">
-        <input type="text" name="username" placeholder="Логин" required>
-        <input type="password" name="password" placeholder="Пароль" required>
-        <button type="submit">Войти</button>
-    </form>
-</div>
+    <input name="username"
+           placeholder="Логин"
+           class="w-full bg-slate-800 px-4 py-3 rounded-xl mb-4 focus:outline-none"/>
+
+    <input type="password"
+           name="password"
+           placeholder="Пароль"
+           class="w-full bg-slate-800 px-4 py-3 rounded-xl mb-6 focus:outline-none"/>
+
+    <button class="w-full bg-indigo-600 hover:bg-indigo-500 transition py-3 rounded-xl font-medium">
+        Войти
+    </button>
+
+</form>
 
 </body>
 </html>
