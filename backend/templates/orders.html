@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Заявки</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/app.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h1>📦 Заявки</h1>
+
+    <div style="margin-bottom:20px;">
+        <a href="/panel/orders?status=Новый">🆕 Новый</a> |
+        <a href="/panel/orders?status=В работе">⚙ В работе</a> |
+        <a href="/panel/orders">📋 Все</a>
+    </div>
+
+    {% for o in orders %}
+    <div class="card" id="order-{{ o.id }}">
+        <h3>Заявка №{{ o.id }}</h3>
+        <p><b>Клиент:</b> {{ o.client_name }} (@{{ o.client_username }})</p>
+        <p><b>Текст:</b> {{ o.text }}</p>
+        <p><b>Статус:</b> {{ o.status }}</p>
+
+        <button class="status-btn" onclick="changeStatus({{ o.id }}, 'В работе')">
+            ⚙ В работу
+        </button>
+
+        <button class="status-btn" onclick="changeStatus({{ o.id }}, 'Готово')">
+            ✅ Готово
+        </button>
+
+        <button class="status-btn" onclick="changeStatus({{ o.id }}, 'Отказ')">
+            ❌ Отказ
+        </button>
+    </div>
+    {% endfor %}
+</div>
+
+</body>
+</html>
+

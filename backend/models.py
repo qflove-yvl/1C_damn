@@ -1,5 +1,3 @@
-from sqlalchemy import Column, Integer, String
-from backend.database import Base
 from sqlalchemy import Column, Integer, String, DateTime
 from datetime import datetime
 from backend.database import Base
@@ -13,9 +11,7 @@ class Order(Base):
     client_chat_id = Column(String)
     text = Column(String)
     status = Column(String, default="Новый")
-
     created_at = Column(DateTime, default=datetime.utcnow)
-
 
 
 class Admin(Base):

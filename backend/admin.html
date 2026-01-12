@@ -1,28 +1,69 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>CRM Admin</title>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: #e5e7eb;
+    padding: 20px;
+}
+.card {
+    background: #020617;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+}
+button {
+    margin: 5px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+</style>
 </head>
 <body>
-<h1>Заявки</h1>
 
-<button onclick="load()">Обновить</button>
-<button onclick="excel()">Excel</button>
+<h1>🛠 Админ-панель</h1>
 
-<pre id="out"></pre>
+<div id="orders"></div>
 
 <script>
 async function load() {
-    const r = await fetch('/orders');
-    const data = await r.json();
-    document.getElementById('out').innerText =
-        JSON.stringify(data, null, 2);
+    const r = await fetch("/orders");
+    const orders = await r.json();
+    const root = document.getElementById("orders");
+    root.innerHTML = "";
+
+    orders.forEach(o => {
+        const d = document.createElement("div");
+        d.className = "card";
+        d.innerHTML = `
+            <b>#${o.id}</b> — ${o.status}<br>
+            <i>${o.client_name}</i><br>
+            ${o.text}<br><br>
+            <button onclick="setStatus(${o.id}, 'В работе')">⚙</button>
+            <button onclick="setStatus(${o.id}, 'Готово')">✅</button>
+            <button onclick="setStatus(${o.id}, 'Отказ')">❌</button>
+        `;
+        root.appendChild(d);
+    });
 }
 
-function excel() {
-    window.location.href = "/excel";
+async function setStatus(id, status) {
+    await fetch("/status", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({id, status})
+    });
+    load();
 }
+
+load();
 </script>
+
 </body>
 </html>

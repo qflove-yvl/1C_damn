@@ -1,14 +1,14 @@
 import time
 from datetime import datetime, timedelta
-import requests
 from backend.database import SessionLocal
 from backend.models import Order
+import requests
 
 BOT_TOKEN = "8279684714:AAFW2cIyug91fE6kArn9GsC55M0tASyu6Mg"
 
 while True:
     db = SessionLocal()
-    limit = datetime.utcnow() - timedelta(minutes=15)
+    limit = datetime.utcnow() - timedelta(minutes=30)
 
     orders = db.query(Order).filter(
         Order.status == "Новый",
@@ -20,7 +20,7 @@ while True:
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
             json={
                 "chat_id": o.client_chat_id,
-                "text": f"⏳ Ваша заявка №{o.id} всё ещё в обработке."
+                "text": f"⏰ Ваша заявка №{o.id} ещё в очереди"
             }
         )
 
