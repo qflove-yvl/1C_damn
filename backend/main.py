@@ -10,6 +10,10 @@ import requests
 
 from backend.database import SessionLocal, engine
 from backend.models import Base, Order
+import asyncio
+
+from bots.client_bot import start_client_bot
+from bots.admin_bot import start_admin_bot
 
 # ================== НАСТРОЙКИ ==================
 
@@ -20,6 +24,14 @@ CLIENT_BOT_TOKEN = "8279684714:AAFW2cIyug91fE6kArn9GsC55M0tASyu6Mg"
 # ==============================================
 
 app = FastAPI()
+
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "service": "backend is running"
+    }
+
 
 # 🔐 Сессии (НЕ ТРОГАТЬ)
 app.add_middleware(
@@ -200,11 +212,7 @@ def export_excel():
     wb.save(path)
     return FileResponse(path)
 
-import threading
-from bots.client_bot import run_client_bot
-from bots.admin_bot import run_admin_bot
-
 @app.on_event("startup")
-def start_bots():
-    threading.Thread(target=run_client_bot, daemon=True).start()
-    threading.Thread(target=run_admin_bot, daemon=True).start()
+async def startup_event():
+    asyncio.create_task(start_client_bot())
+    asyncio.create_task(start_admin_bot())
