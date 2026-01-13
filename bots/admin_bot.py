@@ -17,12 +17,14 @@ from telegram.ext import (
 import io
 
 TOKEN = "8509144850:AAGzSWbu5d2w7Vr3hWUMrEZ9ZCie8SIr1qA"
-API = "http://127.0.0.1:8000"
+API = "https://backend-0z7y.onrender.com"
 
 ADMIN_IDS = [1123838913]
 
 STATUSES = ["Новый", "В работе", "Готово", "Отказ"]
 
+def run_admin_bot():
+    Application.run_polling()
 
 def is_admin(update: Update):
     return update.effective_user.id in ADMIN_IDS

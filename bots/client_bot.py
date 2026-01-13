@@ -3,7 +3,7 @@ from telegram import ReplyKeyboardMarkup
 import aiohttp
 
 TOKEN = "8279684714:AAFW2cIyug91fE6kArn9GsC55M0tASyu6Mg"
-API = "http://127.0.0.1:8000"
+API = "https://backend-0z7y.onrender.com"
 
 KEYBOARD = ReplyKeyboardMarkup(
     [["📨 Новая заявка"], ["📋 Мои заявки", "ℹ️ О сервисе"]],
@@ -64,6 +64,8 @@ async def handle(update, context):
             data = await r.json()
 
     await update.message.reply_text(f"✅ Заявка №{data['id']} создана")
+def run_client_bot():
+    Application.run_polling()
 
 
 

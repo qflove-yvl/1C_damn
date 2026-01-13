@@ -199,3 +199,12 @@ def export_excel():
     path = "orders.xlsx"
     wb.save(path)
     return FileResponse(path)
+
+import threading
+from bots.client_bot import run_client_bot
+from bots.admin_bot import run_admin_bot
+
+@app.on_event("startup")
+def start_bots():
+    threading.Thread(target=run_client_bot, daemon=True).start()
+    threading.Thread(target=run_admin_bot, daemon=True).start()
