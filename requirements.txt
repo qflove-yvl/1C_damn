@@ -1,8 +1,11 @@
 fastapi
 uvicorn
 sqlalchemy
+pydantic
+python-telegram-bot==20.6
+aiohttp
 jinja2
 python-multipart
-requests
 openpyxl
+requests
 itsdangerous
