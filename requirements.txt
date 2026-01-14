@@ -2,7 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 pydantic
-python-telegram-bot==20.6
+python-telegram-bot==13.15
 aiohttp
 jinja2
 python-multipart
